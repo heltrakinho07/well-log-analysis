@@ -86,6 +86,14 @@ def predict_lithology(log_values: dict):
     # Flag para saber se a fisica interveio (se a litologia inicial era diferente da litologia final)
     physics_corrected = (lithology != best_litho)
     
+    # Regra de Guardrail de Densidade Extrema
+    if log_values.get('RHOB', 0) > 2.90:
+        best_litho = "Anomalia: Minerais Pesados / Litologia Complexa"
+        best_conf = 0.99
+        physics_corrected = True
+        # Limpar o map para nao mostrar as previsoes erradas do modelo
+        prob_map = {best_litho: 0.99, "Outras (ignorado devido a densidade extrema)": 0.01}
+    
     return {
         "lithology": best_litho,
         "confidence": float(best_conf),

@@ -162,6 +162,11 @@ if modo == "Previsor de Litologia":
                 st.markdown("<br><br>", unsafe_allow_html=True)
                 litho = result['lithology']
                 conf = result['confidence']
+                
+                if result.get('physics_corrected', False):
+                    st.warning("⚠️ **Correcao Fisica (PIML) Aplicada:** A predicao original estatistica foi anulada "
+                               "porque violava regras petrofisicas basicas (ex: PEF ou GR inconsistente com a matriz).")
+                               
                 if conf > 0.7:
                     st.success(f"Classificacao de alta confianca: **{litho}** ({conf*100:.1f}%)")
                 elif conf > 0.4:

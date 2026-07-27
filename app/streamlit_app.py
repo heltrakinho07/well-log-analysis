@@ -232,45 +232,45 @@ elif modo == "Previsor em Lote (CSV)":
                 results = []
                 
                 # Iterar linha a linha para passar pelas Hard Constraints
-                    for idx, row in df_input.iterrows():
-                        log_values = row.to_dict()
-                        
-                        # Computar features derivadas
-                        gr_min, gr_max = 10, 200
-                        log_values['GR_NORM'] = (log_values['GR'] - gr_min) / (gr_max - gr_min + 1e-8)
-                        log_values['AI'] = log_values['RHOB'] * log_values['DTC']
-                        log_values['NPHI_RHOB_RATIO'] = log_values['NPHI'] / (log_values['RHOB'] + 1e-8)
-                        log_values['RES_DIFF'] = log_values['RDEP'] - log_values['RSHA']
-                        log_values['LOG_RDEP'] = np.log1p(max(log_values['RDEP'], 0))
-                        log_values['DTS_DTC_RATIO'] = log_values['DTS'] / (log_values['DTC'] + 1e-8)
-                        log_values['DCAL_COMPUTED'] = log_values['CALI'] - log_values['BS']
-                        
-                        res = predict_lithology(log_values)
-                        
-                        results.append({
-                            'Predicted_Lithology': res['lithology'],
-                            'Confidence': res['confidence'],
-                            'Physics_Corrected': res.get('physics_corrected', False)
-                        })
-                        
-                    df_results = pd.DataFrame(results)
-                    df_final = pd.concat([df_input, df_results], axis=1)
+                for idx, row in df_input.iterrows():
+                    log_values = row.to_dict()
                     
-                    st.success("Predição Concluída!")
+                    # Computar features derivadas
+                    gr_min, gr_max = 10, 200
+                    log_values['GR_NORM'] = (log_values['GR'] - gr_min) / (gr_max - gr_min + 1e-8)
+                    log_values['AI'] = log_values['RHOB'] * log_values['DTC']
+                    log_values['NPHI_RHOB_RATIO'] = log_values['NPHI'] / (log_values['RHOB'] + 1e-8)
+                    log_values['RES_DIFF'] = log_values['RDEP'] - log_values['RSHA']
+                    log_values['LOG_RDEP'] = np.log1p(max(log_values['RDEP'], 0))
+                    log_values['DTS_DTC_RATIO'] = log_values['DTS'] / (log_values['DTC'] + 1e-8)
+                    log_values['DCAL_COMPUTED'] = log_values['CALI'] - log_values['BS']
                     
-                    c1, c2 = st.columns(2)
-                    c1.metric("Anomalias Petrofísicas Corrigidas", f"{df_results['Physics_Corrected'].sum()} amostras")
-                    c2.metric("Litologia Predominante", df_results['Predicted_Lithology'].mode()[0])
+                    res = predict_lithology(log_values)
                     
-                    st.dataframe(df_final[['Predicted_Lithology', 'Confidence', 'Physics_Corrected'] + list(df_input.columns)].head(100), use_container_width=True)
+                    results.append({
+                        'Predicted_Lithology': res['lithology'],
+                        'Confidence': res['confidence'],
+                        'Physics_Corrected': res.get('physics_corrected', False)
+                    })
                     
-                    csv = df_final.to_csv(index=False).encode('utf-8')
-                    st.download_button(
-                        label="⬇️ Descarregar Resultados Completos (CSV)",
-                        data=csv,
-                        file_name='predicoes_litologia_batch.csv',
-                        mime='text/csv',
-                    )
+                df_results = pd.DataFrame(results)
+                df_final = pd.concat([df_input, df_results], axis=1)
+                
+                st.success("Predição Concluída!")
+                
+                c1, c2 = st.columns(2)
+                c1.metric("Anomalias Petrofísicas Corrigidas", f"{df_results['Physics_Corrected'].sum()} amostras")
+                c2.metric("Litologia Predominante", df_results['Predicted_Lithology'].mode()[0])
+                
+                st.dataframe(df_final[['Predicted_Lithology', 'Confidence', 'Physics_Corrected'] + list(df_input.columns)].head(100), use_container_width=True)
+                    
+                csv = df_final.to_csv(index=False).encode('utf-8')
+                st.download_button(
+                    label="⬇️ Descarregar Resultados Completos (CSV)",
+                    data=csv,
+                    file_name='predicoes_litologia_batch.csv',
+                    mime='text/csv',
+                )
         except Exception as e:
             st.error(f"Erro ao processar o ficheiro: {e}")
 

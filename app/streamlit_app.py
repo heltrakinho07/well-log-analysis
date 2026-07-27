@@ -196,31 +196,42 @@ if modo == "Previsor de Litologia":
 
 elif modo == "Previsor em Lote (CSV)":
     st.title("Previsor em Lote (Importar CSV)")
-    st.markdown("Carregue um ficheiro CSV contendo os logs petrofísicos de múltiplos poços ou secções e o sistema fará a classificação litológica em massa.")
+    st.markdown("Carregue um ficheiro CSV contendo os logs petrofísicos **OU** insira/cole os dados manualmente na tabela abaixo.")
     
-    uploaded_file = st.file_uploader("Arraste ou Selecione o ficheiro CSV", type=["csv"])
+    uploaded_file = st.file_uploader("Opção 1: Upload de CSV", type=["csv"])
     
-    if uploaded_file is not None:
-        try:
-            df_input = pd.read_csv(uploaded_file)
-            st.success(f"Ficheiro carregado com sucesso! ({len(df_input)} amostras / profundidades)")
+    # Colunas obrigatorias
+    required_base_cols = ['GR', 'SGR', 'RHOB', 'NPHI', 'PEF', 'DRHO', 'RDEP', 'RMED', 'RSHA', 'RMIC', 'RXO', 'DTC', 'DTS', 'CALI', 'BS', 'SP', 'ROP', 'MUDWEIGHT', 'ROPA', 'DCAL']
+    
+    try:
+        if uploaded_file is not None:
+            df_initial = pd.read_csv(uploaded_file)
+            st.success(f"Ficheiro carregado com {len(df_initial)} amostras. Pode editar os dados abaixo antes de prever.")
+            # Garantir colunas
+            for col in required_base_cols:
+                if col not in df_initial.columns:
+                    df_initial[col] = 0.0
+        else:
+            # Template vazio
+            df_initial = pd.DataFrame(columns=required_base_cols)
+            # Adicionar uma linha vazia para facilitar a edicao manual
+            df_initial.loc[0] = 0.0
             
-            with st.expander("Pré-visualização dos Dados Originais"):
-                st.dataframe(df_input.head(10))
+        st.markdown("### Opção 2: Edição Manual (Cole os seus dados aqui)")
+        df_input = st.data_editor(df_initial, num_rows="dynamic", use_container_width=True)
+        
+        if not df_input.empty and st.button("Executar Predição em Lote (PIML Ativado)", type="primary"):
+            with st.spinner("A processar e a aplicar Física aos dados..."):
+                from predict import predict_lithology
                 
-            if st.button("Executar Predição em Lote (PIML Ativado)", type="primary"):
-                with st.spinner("A processar e a aplicar Física aos dados..."):
-                    from predict import predict_lithology
-                    
-                    # Garantir que todas as colunas existem (preencher com 0 se faltarem)
-                    required_base_cols = ['GR', 'SGR', 'RHOB', 'NPHI', 'PEF', 'DRHO', 'RDEP', 'RMED', 'RSHA', 'RMIC', 'RXO', 'DTC', 'DTS', 'CALI', 'BS', 'SP', 'ROP', 'MUDWEIGHT', 'ROPA', 'DCAL']
-                    for col in required_base_cols:
-                        if col not in df_input.columns:
-                            df_input[col] = 0.0
-                            
-                    results = []
-                    
-                    # Iterar linha a linha para passar pelas Hard Constraints
+                # Garantir que todas as colunas existem no df editado
+                for col in required_base_cols:
+                    if col not in df_input.columns:
+                        df_input[col] = 0.0
+                        
+                results = []
+                
+                # Iterar linha a linha para passar pelas Hard Constraints
                     for idx, row in df_input.iterrows():
                         log_values = row.to_dict()
                         

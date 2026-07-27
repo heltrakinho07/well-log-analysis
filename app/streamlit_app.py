@@ -196,7 +196,7 @@ if modo == "Previsor de Litologia":
 
 elif modo == "Previsor em Lote (CSV)":
     st.title("Previsor em Lote (Importar CSV)")
-    st.markdown("Carregue um ficheiro CSV contendo os logs petrofísicos **OU** insira/cole os dados manualmente na tabela abaixo.")
+    st.markdown("Carregue um ficheiro CSV contendo os logs petrofísicos **OU** insira os valores dos perfis geofísicos (Well Logs) de uma profundidade específica (na tabela abaixo) e o modelo XGBoost prevê automaticamente o tipo de rocha em massa.")
     
     uploaded_file = st.file_uploader("Opção 1: Upload de CSV", type=["csv"])
     
@@ -217,7 +217,7 @@ elif modo == "Previsor em Lote (CSV)":
             # Adicionar uma linha vazia para facilitar a edicao manual
             df_initial.loc[0] = 0.0
             
-        st.markdown("### Opção 2: Edição Manual (Cole os seus dados aqui)")
+        st.markdown("### Opção 2: Edição Manual (Insira valores para uma ou mais profundidades)")
         df_input = st.data_editor(df_initial, num_rows="dynamic", use_container_width=True)
         
         if not df_input.empty and st.button("Executar Predição em Lote (PIML Ativado)", type="primary"):

@@ -48,7 +48,7 @@ with st.sidebar:
     st.divider()
     modo = st.radio(
         "Modulo de Visualizacao:",
-        ["Previsor de Litologia", "Explorador de Dados"]
+        ["Previsor de Litologia", "Previsor em Lote (CSV)", "Explorador de Dados"]
     )
     st.divider()
     st.caption("Desenvolvido por Helder Traquinho")
@@ -193,6 +193,75 @@ if modo == "Previsor de Litologia":
 
         except Exception as e:
             st.error(f"Erro ao carregar o modelo: {e}. Corra primeiro o script src/train.py.")
+
+elif modo == "Previsor em Lote (CSV)":
+    st.title("Previsor em Lote (Importar CSV)")
+    st.markdown("Carregue um ficheiro CSV contendo os logs petrofísicos de múltiplos poços ou secções e o sistema fará a classificação litológica em massa.")
+    
+    uploaded_file = st.file_uploader("Arraste ou Selecione o ficheiro CSV", type=["csv"])
+    
+    if uploaded_file is not None:
+        try:
+            df_input = pd.read_csv(uploaded_file)
+            st.success(f"Ficheiro carregado com sucesso! ({len(df_input)} amostras / profundidades)")
+            
+            with st.expander("Pré-visualização dos Dados Originais"):
+                st.dataframe(df_input.head(10))
+                
+            if st.button("Executar Predição em Lote (PIML Ativado)", type="primary"):
+                with st.spinner("A processar e a aplicar Física aos dados..."):
+                    from predict import predict_lithology
+                    
+                    # Garantir que todas as colunas existem (preencher com 0 se faltarem)
+                    required_base_cols = ['GR', 'SGR', 'RHOB', 'NPHI', 'PEF', 'DRHO', 'RDEP', 'RMED', 'RSHA', 'RMIC', 'RXO', 'DTC', 'DTS', 'CALI', 'BS', 'SP', 'ROP', 'MUDWEIGHT', 'ROPA', 'DCAL']
+                    for col in required_base_cols:
+                        if col not in df_input.columns:
+                            df_input[col] = 0.0
+                            
+                    results = []
+                    
+                    # Iterar linha a linha para passar pelas Hard Constraints
+                    for idx, row in df_input.iterrows():
+                        log_values = row.to_dict()
+                        
+                        # Computar features derivadas
+                        gr_min, gr_max = 10, 200
+                        log_values['GR_NORM'] = (log_values['GR'] - gr_min) / (gr_max - gr_min + 1e-8)
+                        log_values['AI'] = log_values['RHOB'] * log_values['DTC']
+                        log_values['NPHI_RHOB_RATIO'] = log_values['NPHI'] / (log_values['RHOB'] + 1e-8)
+                        log_values['RES_DIFF'] = log_values['RDEP'] - log_values['RSHA']
+                        log_values['LOG_RDEP'] = np.log1p(max(log_values['RDEP'], 0))
+                        log_values['DTS_DTC_RATIO'] = log_values['DTS'] / (log_values['DTC'] + 1e-8)
+                        log_values['DCAL_COMPUTED'] = log_values['CALI'] - log_values['BS']
+                        
+                        res = predict_lithology(log_values)
+                        
+                        results.append({
+                            'Predicted_Lithology': res['lithology'],
+                            'Confidence': res['confidence'],
+                            'Physics_Corrected': res.get('physics_corrected', False)
+                        })
+                        
+                    df_results = pd.DataFrame(results)
+                    df_final = pd.concat([df_input, df_results], axis=1)
+                    
+                    st.success("Predição Concluída!")
+                    
+                    c1, c2 = st.columns(2)
+                    c1.metric("Anomalias Petrofísicas Corrigidas", f"{df_results['Physics_Corrected'].sum()} amostras")
+                    c2.metric("Litologia Predominante", df_results['Predicted_Lithology'].mode()[0])
+                    
+                    st.dataframe(df_final[['Predicted_Lithology', 'Confidence', 'Physics_Corrected'] + list(df_input.columns)].head(100), use_container_width=True)
+                    
+                    csv = df_final.to_csv(index=False).encode('utf-8')
+                    st.download_button(
+                        label="⬇️ Descarregar Resultados Completos (CSV)",
+                        data=csv,
+                        file_name='predicoes_litologia_batch.csv',
+                        mime='text/csv',
+                    )
+        except Exception as e:
+            st.error(f"Erro ao processar o ficheiro: {e}")
 
 elif modo == "Explorador de Dados":
     st.title("Explorador de Well Logs (FORCE 2020)")

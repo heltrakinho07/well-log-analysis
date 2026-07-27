@@ -126,6 +126,7 @@ if modo == "Previsor de Litologia":
                 ROP = st.number_input("ROP (Rate of Penetration) [m/h]", 0.0, 200.0, 20.0)
                 MUDWEIGHT = st.number_input("Mud Weight [ppg]", 8.0, 20.0, 10.0)
                 ROPA = st.number_input("ROPA (ROP Average)", 0.0, 200.0, 0.0)
+                DCAL = st.number_input("DCAL (Diff Caliper) [in]", -5.0, 10.0, 0.0)
 
         submeter = st.form_submit_button("Classificar Litologia", type="primary",
                                           use_container_width=True)
@@ -135,7 +136,7 @@ if modo == "Previsor de Litologia":
             'GR': GR, 'SGR': SGR, 'RHOB': RHOB, 'NPHI': NPHI, 'PEF': PEF,
             'DRHO': DRHO, 'RDEP': RDEP, 'RMED': RMED, 'RSHA': RSHA,
             'RMIC': RMIC, 'RXO': RXO, 'DTC': DTC, 'DTS': DTS, 'CALI': CALI,
-            'BS': BS, 'SP': SP, 'ROP': ROP, 'MUDWEIGHT': MUDWEIGHT, 'ROPA': ROPA, 'DCAL': 0.0
+            'BS': BS, 'SP': SP, 'ROP': ROP, 'MUDWEIGHT': MUDWEIGHT, 'ROPA': ROPA, 'DCAL': DCAL
         }
         # Criar features derivadas
         gr_min, gr_max = 10, 200
@@ -180,6 +181,15 @@ if modo == "Previsor de Litologia":
                 st.markdown("**Ranking de Probabilidades:**")
                 for lith, prob in list(result['probabilities'].items())[:5]:
                     st.progress(prob, text=f"{lith}: {prob*100:.1f}%")
+                    
+            st.markdown("<br>", unsafe_allow_html=True)
+            with st.expander("🔍 Ver Todas as 27 Features Utilizadas (Motor PIML)"):
+                st.markdown("O modelo XGBoost ingeriu os 20 logs de base fornecidos e calculou em tempo-real **7 features petrofísicas derivadas** para maximizar a separação geológica:")
+                feat_df = pd.DataFrame([log_values]).T
+                feat_df.columns = ["Valor"]
+                # Formatar
+                feat_df["Valor"] = feat_df["Valor"].apply(lambda x: f"{x:.4f}")
+                st.dataframe(feat_df, use_container_width=True)
 
         except Exception as e:
             st.error(f"Erro ao carregar o modelo: {e}. Corra primeiro o script src/train.py.")

@@ -271,8 +271,8 @@ elif modo == "Previsor em Lote (CSV)":
                     file_name='predicoes_litologia_batch.csv',
                     mime='text/csv',
                 )
-        except Exception as e:
-            st.error(f"Erro ao processar o ficheiro: {e}")
+    except Exception as e:
+        st.error(f"Erro ao processar o ficheiro: {e}")
 
 elif modo == "Explorador de Dados":
     st.title("Explorador de Well Logs (FORCE 2020)")

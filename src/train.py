@@ -85,6 +85,8 @@ def main():
     metrics = {name: evaluate(model, X_test, y_test, encoder) for name, model in [('random_forest', rf), ('xgboost_smote', xgb)]}
     metrics.update({'deployment_model': 'xgboost_smote', 'selection_policy': 'Predeclared; compare macro-F1 and per-class recall before changing.',
         'train_wells': sorted(df.iloc[train].WELL.unique().tolist()), 'test_wells': sorted(df.iloc[test].WELL.unique().tolist())})
+    metrics['test_classes_without_samples'] = sorted(set(encoder.classes_) - set(df.iloc[test].LITHOLOGY))
+    metrics['macro_f1_policy'] = 'All training classes, including zero-score classes with no holdout samples.'
     metrics['versions'] = {name: importlib.metadata.version(name) for name in ['scikit-learn', 'xgboost', 'imbalanced-learn', 'pandas', 'numpy']}
     with args.data.open('rb') as source:
         metrics['data_sha256'] = hashlib.file_digest(source, 'sha256').hexdigest()

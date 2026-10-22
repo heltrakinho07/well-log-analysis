@@ -13,6 +13,8 @@ Avaliação com 78 poços de treino e 20 poços de teste, sem sobreposição:
 | Random Forest | 76,30% | 72,43% | 41,78% |
 | XGBoost + SMOTE | 71,91% | 71,97% | 38,77% |
 
+**Cobertura do teste:** a classe Basement não tem amostras nos 20 poços de teste; o seu desempenho não foi validado. O F1 macro apresentado considera as 12 classes e atribui zero à classe sem suporte.
+
 O XGBoost continua a ser o modelo de implantação declarado; esta avaliação não demonstra vantagem sobre Random Forest. O F1 macro evidencia limitações nas classes menos representadas. Veja as métricas por classe e os poços em [reports/metrics.json](reports/metrics.json). A escolha de outro modelo ou optimização deve usar validação interna por poço e uma nova avaliação independente.
 
 Os resultados antigos de 94,19% e 88,02% usavam separação aleatória por amostra e pré-processamento anterior ao split, pelo que não são comparáveis a este holdout por poço.

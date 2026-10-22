@@ -294,5 +294,9 @@
     "pandas": "2.2.3",
     "numpy": "2.3.5"
   },
-  "data_sha256": "f72eaa9d4d30b0990b553333baaac7d129f2a2c5bce96fd580b31592658641da"
+  "data_sha256": "f72eaa9d4d30b0990b553333baaac7d129f2a2c5bce96fd580b31592658641da",
+  "test_classes_without_samples": [
+    "Basement"
+  ],
+  "macro_f1_policy": "All training classes, including zero-score classes with no holdout samples."
 }

@@ -149,7 +149,7 @@ if modo == "Previsor de Litologia":
             col1, col2 = st.columns([1, 1])
             with col1:
                 st.plotly_chart(render_litho_gauge(result['confidence'], result['lithology']),
-                                width="stretch")
+                                use_container_width=True)
             with col2:
                 st.markdown("<br><br>", unsafe_allow_html=True)
                 litho = result['lithology']
@@ -246,7 +246,7 @@ elif modo == "Explorador de Dados":
                      title="Frequencia de cada tipo de rocha no dataset")
         fig.update_layout(paper_bgcolor="#121212", plot_bgcolor="#121212",
                           font={'color': "#E0E0E0"}, showlegend=False)
-        st.plotly_chart(fig, width="stretch")
+        st.plotly_chart(fig, use_container_width=True)
 
         # Crossplot GR vs RHOB
         st.subheader("Crossplot: Gamma Ray vs Densidade")
@@ -256,7 +256,7 @@ elif modo == "Explorador de Dados":
                           title="Separacao litologica no espaco GR-RHOB")
         fig2.update_layout(paper_bgcolor="#121212", plot_bgcolor="#121212",
                            font={'color': "#E0E0E0"})
-        st.plotly_chart(fig2, width="stretch")
+        st.plotly_chart(fig2, use_container_width=True)
 
         st.info("Este crossplot classico (Gamma Ray vs Densidade) demonstra como diferentes "
                 "litologias ocupam regioes distintas no espaco de features. "

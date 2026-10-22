@@ -52,70 +52,9 @@ def add_lithology_names(df):
     return df
 
 
-def engineer_features(df):
-    """Cria features petrofisicas derivadas (ratios e indices geologicos)."""
-    print("  A criar features derivadas (ratios petrofisicos)...")
-
-    # Ratio GR normalizado (indica argilosidade)
-    gr_min = df['GR'].quantile(0.01)
-    gr_max = df['GR'].quantile(0.99)
-    df['GR_NORM'] = (df['GR'] - gr_min) / (gr_max - gr_min + 1e-8)
-    df['GR_NORM'] = df['GR_NORM'].clip(0, 1)
-
-    # Indice de Impedancia Acustica (RHOB * DTC)
-    df['AI'] = df['RHOB'] * df['DTC']
-
-    # Ratio Neutrao-Densidade (separacao de litologias)
-    df['NPHI_RHOB_RATIO'] = df['NPHI'] / (df['RHOB'] + 1e-8)
-
-    # Diferenca de Resistividades (indica presenca de hidrocarbonetos)
-    df['RES_DIFF'] = df['RDEP'] - df['RSHA']
-
-    # Log da Resistividade Profunda (melhor distribuicao)
-    df['LOG_RDEP'] = np.log1p(df['RDEP'].clip(lower=0))
-
-    # Ratio Sonico (DTS/DTC - indica tipo de fluido)
-    df['DTS_DTC_RATIO'] = df['DTS'] / (df['DTC'] + 1e-8)
-
-    # Diferenca Caliper (indica estabilidade do poco)
-    df['DCAL_COMPUTED'] = df['CALI'] - df['BS']
-
-    return df
-
-
 def clean_and_process(df):
-    """Pipeline completa de limpeza."""
-    print("  A limpar dados...")
-
-    # Seleccionar apenas as colunas relevantes
-    feature_cols = LOG_FEATURES + ['WELL', 'DEPTH_MD', 'GROUP', 'FORMATION',
-                                    'FORCE_2020_LITHOFACIES_LITHOLOGY']
-    available = [c for c in feature_cols if c in df.columns]
-    df = df[available].copy()
-
-    # Converter litologia
-    df = add_lithology_names(df)
-
-    # Feature engineering
-    df = engineer_features(df)
-
-    # Preencher NaNs com a mediana de cada poco (estrategia robusta)
-    log_cols = [c for c in LOG_FEATURES if c in df.columns]
-    for col in log_cols:
-        df[col] = df.groupby('WELL')[col].transform(
-            lambda x: x.fillna(x.median())
-        )
-    # Restantes NaNs preenchidos com mediana global
-    for col in log_cols:
-        df[col] = df[col].fillna(df[col].median())
-
-    derived_cols = ['GR_NORM', 'AI', 'NPHI_RHOB_RATIO', 'RES_DIFF',
-                    'LOG_RDEP', 'DTS_DTC_RATIO', 'DCAL_COMPUTED']
-    for col in derived_cols:
-        if col in df.columns:
-            df[col] = df[col].fillna(df[col].median())
-
-    return df
+    """Map targets only. Fitted transformations belong to the training split."""
+    return add_lithology_names(df.copy())
 
 
 def main():

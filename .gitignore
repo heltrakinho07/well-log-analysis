@@ -5,3 +5,7 @@ __pycache__/
 .DS_Store
 .env
 data/raw/*.zip
+
+data/raw/
+data/processed/
+.pytest_cache/

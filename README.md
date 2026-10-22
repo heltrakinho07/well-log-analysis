@@ -1,153 +1,67 @@
 # Well Log Lithology Prediction (FORCE 2020)
 
-[![Python](https://img.shields.io/badge/Python-3.12-blue.svg)](https://www.python.org/)
-[![XGBoost](https://img.shields.io/badge/XGBoost-Optimized-orange.svg)](https://xgboost.readthedocs.io/)
-[![Scikit-Learn](https://img.shields.io/badge/Scikit--Learn-ML-yellow.svg)](https://scikit-learn.org/)
+Classificação litológica com Random Forest, XGBoost, balanceamento de classes e Streamlit. Python 3.11.
 
-English Description Below | Descricao em Portugues Abaixo
+## Estado e migração
 
----
+O pipeline corrigido e o novo bundle treinado estão incluídos. O treino separa poços e partilha o mesmo pré-processamento com a aplicação. Os três artefactos legados foram substituídos por `models/lithology_bundle.joblib`.
 
-## Descricao (Portugues)
+Avaliação com 78 poços de treino e 20 poços de teste, sem sobreposição:
 
-Pipeline completa de Machine Learning para classificacao automatica de litologias a partir de dados de perfis de poco (Well Logs) do Mar da Noruega. O modelo recebe curvas geofisicas (Gamma Ray, Resistividade, Densidade, Neutrao, Sonico, etc.) e classifica automaticamente o tipo de rocha em 12 categorias litologicas.
+| Pipeline | Accuracy | F1 weighted | F1 macro |
+|---|---:|---:|---:|
+| Random Forest | 76,30% | 72,43% | 41,78% |
+| XGBoost + SMOTE | 71,91% | 71,97% | 38,77% |
 
-### Principais Tecnologias
-- **Python:** Linguagem principal da pipeline.
-- **Pandas / NumPy:** Tratamento de dados e manipulacao matricial de logs de pocos.
-- **Scikit-Learn:** Modelo baseline (Random Forest), pre-processamento e metricas de avaliacao (Classification Report).
-- **XGBoost:** Modelo de Gradient Boosting optimizado para classificacao multi-classe.
-- **Imbalanced-Learn (SMOTE):** Balanceamento sintetico para resolver classes extremamente raras.
-- **Matplotlib / Plotly:** Visualizacao de dados geofisicos e apresentacao de resultados.
-- **Streamlit:** Interface Web interactiva com dois modos de visualizacao.
-- **Joblib:** Persistencia dos modelos treinados para deploy.
+O XGBoost continua a ser o modelo de implantação declarado; esta avaliação não demonstra vantagem sobre Random Forest. O F1 macro evidencia limitações nas classes menos representadas. Veja as métricas por classe e os poços em [reports/metrics.json](reports/metrics.json). A escolha de outro modelo ou optimização deve usar validação interna por poço e uma nova avaliação independente.
 
-### Dataset
-- **FORCE 2020 Machine Learning Lithology Prediction Competition** (Noruega)
-- 1.17 milhoes de amostras de 98 pocos no Mar da Noruega
-- 12 classes litologicas (Sandstone, Shale, Limestone, Chalk, Marl, Halite, Anhydrite, Tuff, Coal, Dolomite, Basement, Sandstone/Shale)
-- Licenca: NOLD 2.0
+Os resultados antigos de 94,19% e 88,02% usavam separação aleatória por amostra e pré-processamento anterior ao split, pelo que não são comparáveis a este holdout por poço.
 
-### Resultados da Classificacao
+![Avaliação por poço](reports/benchmark_comparison.png)
+![Importância das variáveis](reports/feature_importance.png)
 
-| Modelo | Accuracy | F1-Score (Weighted) |
-|--------|----------|---------------------|
-| Random Forest (Baseline) | 94.19% | 94.08% |
-| XGBoost + SMOTE | 88.02% | 88.27% |
+## Dados e execução
 
-O SMOTE sacrifica deliberadamente accuracy global para melhorar o Recall nas litologias raras.
-
-**Metricas Detalhadas (XGBoost + SMOTE):**
-
-| Litologia | Precision | Recall | F1-Score | Amostras (Teste) |
-|-----------|-----------|--------|----------|------------------|
-| Anhydrite | 0.94 | 0.83 | 0.89 | 217 |
-| Basement | 1.00 | 0.95 | 0.97 | 20 |
-| Chalk | 0.89 | 0.94 | 0.92 | 2,103 |
-| Coal | 0.66 | 0.76 | 0.71 | 764 |
-| Dolomite | 0.31 | 0.40 | 0.35 | 338 |
-| Halite | 0.99 | 1.00 | 0.99 | 1,643 |
-| Limestone | 0.76 | 0.74 | 0.75 | 11,264 |
-| Marl | 0.71 | 0.84 | 0.77 | 6,666 |
-| Sandstone | 0.86 | 0.87 | 0.87 | 33,787 |
-| Sandstone/Shale | 0.71 | 0.81 | 0.76 | 30,091 |
-| Shale | 0.96 | 0.91 | 0.93 | 144,161 |
-| Tuff | 0.64 | 0.91 | 0.75 | 3,049 |
-
-![Benchmark](reports/benchmark_comparison.png)
-*Comparacao de Performance entre Random Forest e XGBoost + SMOTE.*
-
-![Feature Importance](reports/feature_importance.png)
-*Importancia relativa dos Well Logs na classificacao litologica.*
-
-### Feature Engineering
-O script de preprocessamento cria 7 features petrofisicas derivadas:
-- **GR Normalizado:** Indice de argilosidade.
-- **Impedancia Acustica (AI):** RHOB * DTC.
-- **Ratio Neutrao-Densidade:** Separacao de litologias.
-- **Diferenca de Resistividades:** Indicador de hidrocarbonetos.
-- **Log Resistividade:** Melhoria da distribuicao.
-- **Ratio DTS/DTC:** Indicador de tipo de fluido.
-- **Delta Caliper:** Estabilidade do poco.
-
-### Como Executar
+1. Obtenha o `train.csv` original no [repositório oficial do desafio FORCE 2020](https://github.com/bolgebrygg/Force-2020-Machine-Learning-competition), respeitando a licença e os termos da fonte. O README da fonte contém as instruções de acesso ao conjunto de treino. Os dados não estão incluídos neste projecto.
+2. Coloque o ficheiro, separado por ponto e vírgula, em `data/raw/train.csv`. Deve conter `WELL`, `FORCE_2020_LITHOFACIES_LITHOLOGY` e as curvas necessárias.
+3. Execute a partir da raiz:
 
 ```bash
-git clone https://github.com/heltrakinho07/well-log-analysis.git
-cd well-log-analysis
-python3 -m venv .venv && source .venv/bin/activate
+python3 -m venv .venv
+source .venv/bin/activate
 pip install -r requirements.txt
-python src/preprocess.py
+python src/download_data.py  # omita se já colocou train.csv em data/raw/
 python src/train.py
+# Opcional: preparar a tabela usada pelo Explorador de Dados
+python src/preprocess.py
 streamlit run app/streamlit_app.py
 ```
 
----
+Pode indicar outro conjunto com `python src/train.py --data /caminho/train.csv`. O treino produz `models/lithology_bundle.joblib` e `reports/metrics.json`. A aplicação deve ser reiniciada após substituir o bundle, para limpar o cache do modelo. O Explorador permite carregar um CSV FORCE ou usar a tabela processada local.
 
-## Description (English)
+## Metodologia
 
-End-to-end Machine Learning pipeline for automatic lithology classification from well log data in the Norwegian Sea. The model takes geophysical logging curves (Gamma Ray, Resistivity, Density, Neutron, Sonic, etc.) and automatically classifies the rock type across 12 lithological categories.
+- Holdout por `WELL`, com poços disjuntos e seed fixa. Medianas e limites GR são ajustados exclusivamente no treino.
+- Logs ausentes são imputados antes de calcular as sete variáveis derivadas; a mesma transformação é guardada no bundle e usada na aplicação.
+- Impedância acústica: `RHOB * (304800 / DTC)`, assumindo RHOB em g/cm³ e DTC em µs/ft. O resultado usa a convenção densidade em g/cm³ e velocidade em m/s; multiplique por 1000 para unidades SI de impedância.
+- A API exige as colunas GR, RHOB, NPHI, DTC, RDEP e PEF. Células vazias são imputadas; linhas sem qualquer medição nuclear, texto, infinito e valores não físicos de RHOB/DTC/RDEP são rejeitados. Curvas opcionais totalmente ausentes no treino recebem zero de forma consistente.
+- XGBoost usa até 100 mil amostras de treino e SMOTE com vizinhança adaptada. Classes com apenas uma amostra usam sobreamostragem por duplicação. Random Forest usa todo o treino: a comparação mede os pipelines completos, não o efeito isolado de SMOTE.
+- O XGBoost é a escolha de implantação declarada antecipadamente. O holdout é usado para relatório, nunca para seleccionar automaticamente o vencedor. Antes de mudar o modelo, use validação por poço dentro do treino.
+- O relatório inclui accuracy, F1 weighted, F1 macro, métricas por classe e os poços de cada partição. Classes que só aparecem no teste interrompem o treino com uma mensagem explícita.
+- A aplicação mantém as probabilidades originais do modelo. Densidade elevada gera um aviso, sem inventar classes ou confiança de 99%. As probabilidades não estão calibradas como certeza geológica.
+- Previsão em lote vectorizada e carregamento do bundle em cache. CSVs com vírgula ou ponto e vírgula; exportação preserva os resultados da última execução.
 
-### Core Technologies
-- **Python:** Main pipeline language.
-- **Pandas / NumPy:** Data handling and matrix manipulation of well logs.
-- **Scikit-Learn:** Baseline model (Random Forest), preprocessing and evaluation metrics (Classification Report).
-- **XGBoost:** High-performance Gradient Boosting for multi-class classification.
-- **Imbalanced-Learn (SMOTE):** Synthetic balancing to solve extreme class imbalances.
-- **Matplotlib / Plotly:** Geophysical data visualization and results plotting.
-- **Streamlit:** Interactive Web interface with two viewing modes.
-- **Joblib:** Model persistence for deployment.
+Este modelo é treinado com dados do Mar da Noruega. A aplicação em Moçambique ou noutras bacias exige validação local; não existem métricas locais neste repositório.
 
-### Dataset
-- **FORCE 2020 Machine Learning Lithology Prediction Competition** (Norway)
-- 1.17 million samples from 98 wells in the Norwegian Sea
-- 12 lithological classes (Sandstone, Shale, Limestone, Chalk, Marl, Halite, Anhydrite, Tuff, Coal, Dolomite, Basement, Sandstone/Shale)
-- License: NOLD 2.0
-
-### Classification Results
-
-| Model | Accuracy | F1-Score (Weighted) |
-|-------|----------|---------------------|
-| Random Forest (Baseline) | 94.19% | 94.08% |
-| XGBoost + SMOTE | 88.02% | 88.27% |
-
-SMOTE deliberately trades overall accuracy for improved Recall on rare lithologies.
-
-**Detailed Metrics (XGBoost + SMOTE):**
-
-| Lithology | Precision | Recall | F1-Score | Test Samples |
-|-----------|-----------|--------|----------|--------------|
-| Anhydrite | 0.94 | 0.83 | 0.89 | 217 |
-| Basement | 1.00 | 0.95 | 0.97 | 20 |
-| Chalk | 0.89 | 0.94 | 0.92 | 2,103 |
-| Coal | 0.66 | 0.76 | 0.71 | 764 |
-| Dolomite | 0.31 | 0.40 | 0.35 | 338 |
-| Halite | 0.99 | 1.00 | 0.99 | 1,643 |
-| Limestone | 0.76 | 0.74 | 0.75 | 11,264 |
-| Marl | 0.71 | 0.84 | 0.77 | 6,666 |
-| Sandstone | 0.86 | 0.87 | 0.87 | 33,787 |
-| Sandstone/Shale | 0.71 | 0.81 | 0.76 | 30,091 |
-| Shale | 0.96 | 0.91 | 0.93 | 144,161 |
-| Tuff | 0.64 | 0.91 | 0.75 | 3,049 |
-
-### Feature Engineering
-The preprocessing script creates 7 derived petrophysical features:
-- **Normalized GR:** Shaliness index.
-- **Acoustic Impedance (AI):** RHOB * DTC.
-- **Neutron-Density Ratio:** Lithology separation.
-- **Resistivity Difference:** Hydrocarbon indicator.
-- **Log Resistivity:** Distribution improvement.
-- **DTS/DTC Ratio:** Fluid type indicator.
-- **Delta Caliper:** Wellbore stability.
-
-### How to Run
+## Verificação
 
 ```bash
-git clone https://github.com/heltrakinho07/well-log-analysis.git
-cd well-log-analysis
-python3 -m venv .venv && source .venv/bin/activate
-pip install -r requirements.txt
-python src/preprocess.py
-python src/train.py
-streamlit run app/streamlit_app.py
+python -m unittest discover -s tests -v
+python -m compileall -q src app
 ```
+
+O GitHub Actions executa estas verificações. Os testes usam dados sintéticos para validar isolamento por poço, imputação e derivados, entradas inválidas, classes raras, persistência e equivalência entre previsão individual e em lote. Não substituem a avaliação com FORCE.
+
+## Licenciamento
+
+Os termos do dataset pertencem à fonte original. Este repositório ainda não declara uma licença própria para o código; o proprietário deve escolher a licença antes de o distribuir como software licenciado.

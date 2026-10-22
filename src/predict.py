@@ -1,102 +1,39 @@
-"""
-predict.py - Funcao de previsao reutilizavel para a interface Streamlit.
-"""
+"""Vectorized inference using the exact preprocessing fitted on training wells."""
+from functools import lru_cache
+from pathlib import Path
 import joblib
-import pandas as pd
 import numpy as np
-import os
+import pandas as pd
 
-MODEL_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'models')
+MODEL_DIR = Path(__file__).resolve().parent.parent / 'models'
 
+@lru_cache(maxsize=1)
 def load_model():
-    """Carrega o modelo treinado e os artefactos."""
-    model = joblib.load(os.path.join(MODEL_DIR, 'xgboost_lithology.joblib'))
-    le = joblib.load(os.path.join(MODEL_DIR, 'label_encoder.joblib'))
-    features = joblib.load(os.path.join(MODEL_DIR, 'feature_names.joblib'))
-    return model, le, features
+    path = MODEL_DIR / 'lithology_bundle.joblib'
+    if not path.exists():
+        raise FileNotFoundError('Modelo actualizado indisponível. Execute python src/train.py com os dados FORCE. Os artefactos antigos não possuem pré-processamento compatível.')
+    bundle = joblib.load(path)
+    if bundle.get('schema_version') != 2:
+        raise ValueError('Versão de modelo incompatível. Volte a treinar.')
+    return bundle
 
-def apply_physics_constraints(prob_map: dict, log_values: dict):
-    """
-    Aplica Hard Constraints baseados em Petrofisica (PIML).
-    Anula predicoes matematicas que sao geologicamente impossiveis.
-    """
-    pef = log_values.get('PEF', 0)
-    gr = log_values.get('GR', 0)
-    
-    # Regra 1: Sandstone puro nao pode ter PEF > 3.0 (quartzo e 1.8)
-    if pef > 3.0 and 'Sandstone' in prob_map:
-        prob_map['Sandstone'] *= 0.1  # Penalizacao severa
-        
-    # Regra 2: Sandstone puro nao costuma ter GR alto (>85 API)
-    if gr > 85 and 'Sandstone' in prob_map:
-        prob_map['Sandstone'] *= 0.2
-        
-    # Regra 3: Shale costuma ter GR alto. Se o modelo prever Shale com GR < 40, penalizar.
-    if gr < 40 and 'Shale' in prob_map:
-        prob_map['Shale'] *= 0.1
+def predict_batch(frame):
+    bundle = load_model()
+    X = bundle['preprocessor'].transform(frame)
+    probabilities = bundle['model'].predict_proba(X)
+    classes = bundle['label_encoder'].inverse_transform(bundle['model'].classes_.astype(int))
+    rows = []
+    for position, proba in enumerate(probabilities):
+        best = int(np.argmax(proba))
+        warnings = []
+        if X.iloc[position]['RHOB'] > 2.90:
+            warnings.append('Densidade elevada: verificar unidades, qualidade do log e contexto geológico.')
+        if frame.iloc[position].reindex(X.columns[:20]).isna().any():
+            warnings.append('Logs ausentes preenchidos com medianas do treino.')
+        rows.append({'lithology': str(classes[best]), 'confidence': float(proba[best]),
+                     'probabilities': {str(k): float(v) for k, v in zip(classes, proba)},
+                     'physics_corrected': False, 'warnings': warnings})
+    return rows
 
-    # Re-normalizar
-    total_prob = sum(prob_map.values())
-    if total_prob > 0:
-        prob_map = {k: v / total_prob for k, v in prob_map.items()}
-        
-    return prob_map
-
-def predict_lithology(log_values: dict):
-    """
-    Preve a litologia a partir de valores de Well Logs.
-    
-    Args:
-        log_values: Dicionario {nome_do_log: valor}
-    
-    Returns:
-        dict com litologia prevista e probabilidades
-    """
-    model, le, features = load_model()
-    
-    # Criar DataFrame com os valores fornecidos
-    df = pd.DataFrame([log_values])
-    
-    # Garantir que todas as features existem (preencher com 0 as ausentes)
-    for f in features:
-        if f not in df.columns:
-            df[f] = 0
-    
-    df = df[features]
-    
-    # Previsao
-    pred = model.predict(df)[0]
-    proba = model.predict_proba(df)[0]
-    
-    lithology = le.inverse_transform([pred])[0]
-    
-    # Mapa de probabilidades inicial do XGBoost
-    prob_map = {le.inverse_transform([i])[0]: float(p) for i, p in enumerate(proba)}
-    
-    # APLICAR PHYSICS-INFORMED ML (PIML)
-    prob_map = apply_physics_constraints(prob_map, log_values)
-    
-    # Re-ordenar apos penalizacoes
-    prob_map = dict(sorted(prob_map.items(), key=lambda x: x[1], reverse=True))
-    
-    # Nova predicao apos fisica
-    best_litho = list(prob_map.keys())[0]
-    best_conf = list(prob_map.values())[0]
-    
-    # Flag para saber se a fisica interveio (se a litologia inicial era diferente da litologia final)
-    physics_corrected = (lithology != best_litho)
-    
-    # Regra de Guardrail de Densidade Extrema
-    if log_values.get('RHOB', 0) > 2.90:
-        best_litho = "Anomalia: Minerais Pesados / Litologia Complexa"
-        best_conf = 0.99
-        physics_corrected = True
-        # Limpar o map para nao mostrar as previsoes erradas do modelo
-        prob_map = {best_litho: 0.99, "Outras (ignorado devido a densidade extrema)": 0.01}
-    
-    return {
-        "lithology": best_litho,
-        "confidence": float(best_conf),
-        "probabilities": prob_map,
-        "physics_corrected": physics_corrected
-    }
+def predict_lithology(log_values):
+    return predict_batch(pd.DataFrame([log_values]))[0]
